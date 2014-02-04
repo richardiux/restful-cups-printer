@@ -36,8 +36,9 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 		return os.Remove(name)
 	}
 
-	sendToPrinter := func(documentName string, printer string, orientation string, media string) ([]string, string) {
-		defer removeDocument(documentName)
+	sendToPrinter := func(url string, printer string, orientation string, media string) ([]string, string) {
+		document := fetchDocument(url)
+		defer removeDocument(document.Name())
 
 		var printOptions []string
 
@@ -50,7 +51,7 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 		if media != "" {
 			printOptions = append(printOptions, "-o", fmt.Sprintf("media=%s", media))
 		}
-		printOptions = append(printOptions, documentName)
+		printOptions = append(printOptions, document.Name())
 
 		cmd := exec.Command("lpr", printOptions...)
 		var out bytes.Buffer
@@ -62,19 +63,12 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 	qs := req.URL.Query()
 	printer, orientation, media, url := qs.Get("printer"), qs.Get("orientation"), qs.Get("media"), qs.Get("path")
 
-	document := fetchDocument(url)
-	printOptions, printOut := sendToPrinter(document.Name(), printer, orientation, media)
+	go sendToPrinter(url, printer, orientation, media)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	res.JSON(200, map[string]interface{}{
-		"printer":       printer,
-		"orientation":   orientation,
-		"media":         media,
-		"url":           url,
-		"tmp_file":      document.Name(),
-		"print_options": printOptions,
-		"print_ouput":   printOut,
+		"status": "scheduled",
 	})
 }
 
