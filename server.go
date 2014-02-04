@@ -17,47 +17,52 @@ import (
 
 const version = "0.1.1"
 
-func fetchDocument(url string) *os.File {
-	os.Mkdir("./tmp", 0700)
-
-	out, _ := ioutil.TempFile("tmp", "document")
-	defer out.Close()
-
-	resp, _ := http.Get(url)
-	defer resp.Body.Close()
-
-	io.Copy(out, resp.Body)
-
-	return out
-}
-
-func sendToPrinter(documentPath string, printer string, orientation string, media string) ([]string, string) {
-	var printOptions []string
-
-	if printer != "" {
-		printOptions = append(printOptions, "-P", printer)
-	}
-	if orientation != "" {
-		printOptions = append(printOptions, "-o", orientation)
-	}
-	if media != "" {
-		printOptions = append(printOptions, "-o", fmt.Sprintf("media=%s", media))
-	}
-	printOptions = append(printOptions, documentPath)
-
-	cmd := exec.Command("lpr", printOptions...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Run()
-	return printOptions, out.String()
-}
-
 func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) {
+	fetchDocument := func(url string) *os.File {
+		os.Mkdir("./tmp", 0700)
+
+		out, _ := ioutil.TempFile("tmp", "document")
+		defer out.Close()
+
+		resp, _ := http.Get(url)
+		defer resp.Body.Close()
+
+		io.Copy(out, resp.Body)
+
+		return out
+	}
+
+	removeDocument := func(name string) error {
+		return os.Remove(name)
+	}
+
+	sendToPrinter := func(documentPath string, printer string, orientation string, media string) ([]string, string) {
+		var printOptions []string
+
+		if printer != "" {
+			printOptions = append(printOptions, "-P", printer)
+		}
+		if orientation != "" {
+			printOptions = append(printOptions, "-o", orientation)
+		}
+		if media != "" {
+			printOptions = append(printOptions, "-o", fmt.Sprintf("media=%s", media))
+		}
+		printOptions = append(printOptions, documentPath)
+
+		cmd := exec.Command("lpr", printOptions...)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Run()
+		return printOptions, out.String()
+	}
+
 	qs := req.URL.Query()
 	printer, orientation, media, url := qs.Get("printer"), qs.Get("orientation"), qs.Get("media"), qs.Get("path")
 
 	document := fetchDocument(url)
 	printOptions, printOut := sendToPrinter(document.Name(), printer, orientation, media)
+	removeDocument(document.Name())
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
