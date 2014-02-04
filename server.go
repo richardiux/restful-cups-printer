@@ -36,7 +36,9 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 		return os.Remove(name)
 	}
 
-	sendToPrinter := func(documentPath string, printer string, orientation string, media string) ([]string, string) {
+	sendToPrinter := func(documentName string, printer string, orientation string, media string) ([]string, string) {
+		defer removeDocument(documentName)
+
 		var printOptions []string
 
 		if printer != "" {
@@ -48,7 +50,7 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 		if media != "" {
 			printOptions = append(printOptions, "-o", fmt.Sprintf("media=%s", media))
 		}
-		printOptions = append(printOptions, documentPath)
+		printOptions = append(printOptions, documentName)
 
 		cmd := exec.Command("lpr", printOptions...)
 		var out bytes.Buffer
@@ -62,7 +64,6 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 
 	document := fetchDocument(url)
 	printOptions, printOut := sendToPrinter(document.Name(), printer, orientation, media)
-	removeDocument(document.Name())
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
