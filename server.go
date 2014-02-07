@@ -113,6 +113,13 @@ func main() {
 
 	m.Get("/cancel/all", cancelAll)
 
+	m.Get("/self_update", func(res render.Render, w http.ResponseWriter) {
+		cmd := exec.Command("./update")
+		cmd.Run()
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		res.JSON(200, map[string]interface{}{"success": true, "version": version})
+	})
+
 	m.Get("/status", func(res render.Render, w http.ResponseWriter) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		res.JSON(200, map[string]interface{}{"success": true, "version": version})
