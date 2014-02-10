@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-const version = "0.1.1"
+const version = "0.1.2"
 
 func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) {
 	fetchDocument := func(url string) *os.File {
@@ -124,6 +124,12 @@ func main() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		res.JSON(200, map[string]interface{}{"success": true, "version": version})
 	})
+
+	go func() {
+		if err := http.ListenAndServe(":5899", m); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	if err := http.ListenAndServeTLS(":9631", "cert.pem", "key.pem", m); err != nil {
 		log.Fatal(err)
