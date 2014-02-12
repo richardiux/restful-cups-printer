@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-const version = "0.1.2"
+const version = "0.1.3"
 
 func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) {
 	fetchDocument := func(url string) *os.File {
