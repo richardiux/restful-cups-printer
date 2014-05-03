@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/codegangsta/martini"
-	"github.com/codegangsta/martini-contrib/render"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,31 +11,43 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+
+	"github.com/codegangsta/martini"
+	"github.com/codegangsta/martini-contrib/render"
 )
 
 const version = "0.1.3"
 
 func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) {
-	fetchDocument := func(url string) *os.File {
+	fetchDocument := func(url string) (*os.File, error) {
+		if url == "" {
+			err := fmt.Errorf("URL is blank")
+			return nil, err
+		}
+
 		os.Mkdir("./tmp", 0700)
 
 		out, _ := ioutil.TempFile("tmp", "document")
 		defer out.Close()
 
-		resp, _ := http.Get(url)
+		resp, err := http.Get(url)
 		defer resp.Body.Close()
 
 		io.Copy(out, resp.Body)
 
-		return out
+		return out, err
 	}
 
 	removeDocument := func(name string) error {
 		return os.Remove(name)
 	}
 
-	sendToPrinter := func(url string, printer string, orientation string, media string) ([]string, string) {
-		document := fetchDocument(url)
+	sendToPrinter := func(url string, printer string, orientation string, media string) ([]string, string, error) {
+		document, err := fetchDocument(url)
+		if err != nil {
+			log.Println(err)
+			return nil, "", err
+		}
 		defer removeDocument(document.Name())
 
 		var printOptions []string
@@ -56,8 +66,12 @@ func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) 
 		cmd := exec.Command("lpr", printOptions...)
 		var out bytes.Buffer
 		cmd.Stdout = &out
-		cmd.Run()
-		return printOptions, out.String()
+		err = cmd.Run()
+		if err != nil {
+			log.Println(err)
+			return nil, "", err
+		}
+		return printOptions, out.String(), nil
 	}
 
 	qs := req.URL.Query()
