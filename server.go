@@ -16,7 +16,7 @@ import (
 	"github.com/codegangsta/martini-contrib/render"
 )
 
-const version = "0.1.4"
+const version = "0.1.5"
 
 func printDocument(res render.Render, req *http.Request, w http.ResponseWriter) {
 	fetchDocument := func(url string) (*os.File, error) {
